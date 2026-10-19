@@ -135,6 +135,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           O_REGEN: ${{ steps.regen.outcome }}
           O_TAGS: ${{ steps.tags.outcome }}
+          O_PARSE: ${{ steps.parse.outcome }}
           O_DUPLICATES: ${{ steps.duplicates.outcome }}
           O_DRIFT: ${{ steps.drift.outcome }}
           O_AUDIT: ${{ steps.audit.outcome }}
@@ -146,6 +147,7 @@ jobs:
           {
             echo "regen=$O_REGEN"
             echo "tags=$O_TAGS"
+            echo "parse=$O_PARSE"
             echo "duplicates=$O_DUPLICATES"
             echo "drift=$O_DRIFT"
             echo "audit=$O_AUDIT"

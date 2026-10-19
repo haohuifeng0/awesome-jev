@@ -233,7 +233,8 @@ class EndToEnd(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.server = HTTPServer(("127.0.0.1", 0), FakeServer)
-        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+        cls.server_thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.server_thread.start()
         base = f"http://127.0.0.1:{cls.server.server_port}"
         cls.env = {"GITHUB_API": f"{base}/gh", "JEV_ENDPOINT": f"{base}/jev",
                    "TYPESAFE_API_KEY": "test-key", "GITHUB_TOKEN": "gh-test"}
@@ -241,6 +242,8 @@ class EndToEnd(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown()
+        cls.server_thread.join()
+        cls.server.server_close()
 
     def setUp(self):
         FakeServer.requests.clear()

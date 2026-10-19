@@ -32,6 +32,14 @@ const CHECKS = [
       'CONTRIBUTING.md). Fix the spelling, pick a listed value, or remove the tag block.',
   },
   {
+    key: 'parse',
+    log: 'parse.txt',
+    title: 'An entry line does not match the entry format',
+    help: () =>
+      'The README generator could not parse an entry, so that entry silently loses its badge and ' +
+      'index listing. Use the exact entry format documented in CONTRIBUTING.md.',
+  },
+  {
     key: 'duplicates',
     log: 'duplicates.txt',
     title: 'The same repository is listed more than once',

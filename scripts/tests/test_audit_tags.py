@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import gc
 import importlib.util
 import io
 import json
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "audit-tags.py"
@@ -92,3 +95,25 @@ class SupportCoverage(unittest.TestCase):
         code, out = run(ROOT / "categories", TAGS_PATH)
         self.assertEqual(code, 0, out)
         self.assertNotIn("error:", out)
+
+    def test_rendered_badge_check_closes_files(self):
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "routing.md"
+            path.write_text("- [Router](https://example.com) - Routing: example.\n", encoding="utf-8")
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always", ResourceWarning)
+                audit.check_no_rendered_badges([path])
+                gc.collect()
+
+        self.assertEqual([warning for warning in caught if warning.category is ResourceWarning], [])
+
+    def test_rendered_badge_check_closes_file_when_iteration_is_interrupted(self):
+        source = mock.MagicMock()
+        source.__enter__.return_value.__iter__.side_effect = KeyboardInterrupt
+
+        with mock.patch.object(Path, "open", return_value=source):
+            with self.assertRaises(KeyboardInterrupt):
+                audit.check_no_rendered_badges([Path("routing.md")])
+
+        source.__exit__.assert_called_once()

@@ -135,10 +135,11 @@ def check_no_rendered_badges(paths) -> int:
     """
     bad = 0
     for p in paths:
-        for i, line in enumerate(open(p, encoding="utf-8"), 1):
-            if line.startswith("- [") and "img.shields.io" in line:
-                print(f"error: {p}:{i} 条目里写了渲染后的 badge，应改为 `{{agent: ...}}` / `{{type: ...}}`")
-                bad += 1
+        with p.open(encoding="utf-8") as source:
+            for i, line in enumerate(source, 1):
+                if line.startswith("- [") and "img.shields.io" in line:
+                    print(f"error: {p}:{i} 条目里写了渲染后的 badge，应改为 `{{agent: ...}}` / `{{type: ...}}`")
+                    bad += 1
     return bad
 
 def main(argv: list[str]) -> int:
