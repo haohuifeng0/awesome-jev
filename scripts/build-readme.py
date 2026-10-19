@@ -5,6 +5,8 @@ import json
 import re
 from pathlib import Path
 
+from catalog_format import ALL_FILES, ENTRY_RE, OPEN_TRACKING, TagVocabulary, parse_tag_pairs
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README_PATH = REPO_ROOT / "README.md"
 TAGS_PATH = REPO_ROOT / "tags.json"
@@ -97,29 +99,11 @@ AGENT_LABELS = {
 }
 TYPE_LABELS = set(_AXES["type"]["values"])
 TYPE_COLOR = _AXES["type"]["color"]
-
-ENTRY_RE = re.compile(r"^(- \[[^\]]+\]\([^)]+\))(?:\s*`\{([^}]*)\}`)?\s*-\s*(.+)$")
-
+TAG_VOCABULARY = TagVocabulary(frozenset(AGENT_LABELS), frozenset(TYPE_LABELS))
 
 def parse_tags(raw: str) -> tuple[dict[str, str], list[str]]:
     """解析 `agent: pi, type: proxy`，返回 (标签, 未知项)。"""
-    tags: dict[str, str] = {}
-    unknown: list[str] = []
-    for pair in raw.split(","):
-        pair = pair.strip()
-        if not pair:
-            continue
-        if ":" not in pair:
-            unknown.append(pair)
-            continue
-        kind, value = (part.strip().lower() for part in pair.split(":", 1))
-        if kind == "agent" and value in AGENT_LABELS:
-            tags["agent"] = value
-        elif kind == "type" and value in TYPE_LABELS:
-            tags["type"] = value
-        else:
-            unknown.append(f"{kind}: {value}")
-    return tags, unknown
+    return parse_tag_pairs(raw, TAG_VOCABULARY)
 
 
 def shields_escape(text: str) -> str:
@@ -172,7 +156,9 @@ def render_entry(line: str) -> tuple[str, dict[str, str]]:
     m = ENTRY_RE.match(line)
     if not m:
         return line, {}
-    head, raw_tags, desc = m.group(1), m.group(2) or "", m.group(3)
+    head = m.group("head")
+    raw_tags = m.group("tags") or ""
+    desc = m.group("summary")
     tags: dict[str, str] = {}
     if raw_tags:
         tags, unknown = parse_tags(raw_tags)
@@ -185,31 +171,6 @@ def render_entry(line: str) -> tuple[str, dict[str, str]]:
     if not badges:
         return line, {}
     return f"{head} {' '.join(badges)} - {desc}", tags
-
-CATEGORIES = [
-    "classification-routing.md",
-    "adaptive-realtime-ui.md",
-    "verification-guardrails.md",
-    "scoring-ranking.md",
-    "agent-decisions.md",
-    "data-labeling-curation.md",
-    "evaluation-benchmarking.md",
-    "calibration-research.md",
-    "infra-sdks-integrations.md",
-    "game-simulation.md",
-    "robotics-physical.md",
-    "finance-trading.md",
-    "compliance-legal.md",
-    "content-moderation.md",
-    "related-practices-discussions.md",
-]
-
-OPEN_TRACKING = [
-    "scientific-pipelines.md",
-]
-
-ALL_FILES = CATEGORIES + OPEN_TRACKING
-
 
 class Category:
     def __init__(self, filename: str, title: str, count: int, lines: list[str],
@@ -285,8 +246,10 @@ def parse_category(filename: str) -> Category:
                 unparseable += 1
             rendered.append(out_line)
             if tags:
-                name = re.match(r"- \[([^\]]+)\]\(([^)]+)\)", line)
-                tagged.append(((name.group(1), name.group(2)) if name else (line, ""), tags))
+                name = ENTRY_RE.match(line)
+                tagged.append(
+                    ((name.group("name"), name.group("url")) if name else (line, ""), tags)
+                )
             previous_blank = False
 
     while rendered and not rendered[-1].strip():
